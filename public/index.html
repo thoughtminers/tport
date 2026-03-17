@@ -894,22 +894,89 @@
       window._fitTerminal = fitTerminal;
     }
 
-    // ── Render hidden xterm buffer as plain text (mobile) ──
+    // ── Render hidden xterm buffer with colors (mobile) ──
     const boxDrawingRe = /^[\s─│┌┐└┘├┤┬┴┼╭╮╯╰━║╔╗╚╝╠╣╦╩╬▀▄█▌▐░▒▓╱╲╳⎺⎻⎼⎽◆●►◄▲▼]*$/;
+
+    const ANSI_16 = [
+      '#484F58','#F85149','#238636','#D29922','#58A6FF','#BC8CFF','#39D353','#8B949E',
+      '#6E7681','#FF7B72','#3FB950','#E3B341','#79C0FF','#D2A8FF','#56D364','#C9D1D9'
+    ];
+
+    function getCellFg(cell) {
+      if (cell.isFgDefault()) return null;
+      if (cell.isFgRGB()) {
+        const c = cell.getFgColor();
+        return `rgb(${(c>>16)&0xFF},${(c>>8)&0xFF},${c&0xFF})`;
+      }
+      const idx = cell.getFgColor();
+      if (idx < 16) return ANSI_16[idx];
+      if (idx < 232) {
+        const i = idx - 16;
+        return `rgb(${Math.floor(i/36)*51},${Math.floor((i%36)/6)*51},${(i%6)*51})`;
+      }
+      const g = (idx - 232) * 10 + 8;
+      return `rgb(${g},${g},${g})`;
+    }
+
+    function renderLineHtml(line) {
+      // Find last non-space column
+      let lastCol = line.length - 1;
+      while (lastCol >= 0) {
+        const c = line.getCell(lastCol);
+        if (c && c.getChars() && c.getChars() !== ' ') break;
+        lastCol--;
+      }
+      if (lastCol < 0) return '';
+
+      let html = '';
+      let prevStyle = '';
+      let spanOpen = false;
+
+      for (let col = 0; col <= lastCol; col++) {
+        const cell = line.getCell(col);
+        if (!cell) continue;
+        const ch = cell.getChars();
+        if (ch === '') continue; // wide char continuation
+
+        let style = '';
+        const fg = getCellFg(cell);
+        if (fg) style += `color:${fg};`;
+        if (cell.isBold()) style += 'font-weight:bold;';
+        if (cell.isDim()) style += 'opacity:0.6;';
+        if (cell.isItalic()) style += 'font-style:italic;';
+
+        if (style !== prevStyle) {
+          if (spanOpen) html += '</span>';
+          if (style) {
+            html += `<span style="${style}">`;
+            spanOpen = true;
+          } else {
+            spanOpen = false;
+          }
+          prevStyle = style;
+        }
+
+        html += escapeHtml(ch);
+      }
+
+      if (spanOpen) html += '</span>';
+      return html;
+    }
 
     function renderMobileBuffer() {
       const buf = hiddenTerm.buffer.active;
-      const lines = [];
+      const htmlLines = [];
       for (let i = 0; i < buf.length; i++) {
         const line = buf.getLine(i);
         if (line) {
           const text = line.translateToString(true);
-          // Skip lines that are purely box-drawing / TUI chrome
-          if (text && !boxDrawingRe.test(text)) lines.push(text);
+          if (text && !boxDrawingRe.test(text)) {
+            htmlLines.push(renderLineHtml(line));
+          }
         }
       }
-      while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
-      mobileOutput.textContent = lines.join('\n');
+      while (htmlLines.length > 0 && (htmlLines[htmlLines.length - 1] === '' || htmlLines[htmlLines.length - 1] === undefined)) htmlLines.pop();
+      mobileOutput.innerHTML = htmlLines.join('\n');
       mobileOutput.scrollTop = mobileOutput.scrollHeight;
     }
 
@@ -927,7 +994,7 @@
     function clearOutput() {
       if (isMobile) {
         hiddenTerm.reset();
-        mobileOutput.textContent = '';
+        mobileOutput.innerHTML = '';
       } else {
         term.reset();
       }
