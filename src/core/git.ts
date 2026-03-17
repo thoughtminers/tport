@@ -32,9 +32,7 @@ export function getUntrackedFiles(cwd: string): string[] {
   return raw.split('\n').filter(Boolean);
 }
 
-export function getStatus(
-  cwd: string
-): { file: string; status: string }[] {
+export function getStatus(cwd: string): { file: string; status: string }[] {
   const raw = run('git status --porcelain', cwd);
   if (!raw) return [];
   return raw.split('\n').map(line => ({
@@ -47,10 +45,7 @@ export function getLog(
   cwd: string,
   n = 20
 ): { hash: string; message: string; date: string; author: string }[] {
-  const raw = run(
-    `git log --oneline --format="%h||%s||%cr||%an" -${n}`,
-    cwd
-  );
+  const raw = run(`git log --oneline --format="%h||%s||%cr||%an" -${n}`, cwd);
   if (!raw) return [];
   return raw.split('\n').map(line => {
     const [hash, message, date, author] = line.split('||');
@@ -63,7 +58,10 @@ export function stageFile(cwd: string, file: string): void {
 }
 
 export function unstageFile(cwd: string, file: string): void {
-  execFileSync('git', ['restore', '--staged', '--', file], { cwd, timeout: 10000 });
+  execFileSync('git', ['restore', '--staged', '--', file], {
+    cwd,
+    timeout: 10000,
+  });
 }
 
 export function commitStaged(cwd: string, message: string): string {
@@ -74,9 +72,11 @@ export function commitStaged(cwd: string, message: string): string {
   }).trimEnd();
 }
 
-export function getDiffStats(
-  cwd: string
-): { files: number; additions: number; deletions: number } {
+export function getDiffStats(cwd: string): {
+  files: number;
+  additions: number;
+  deletions: number;
+} {
   const raw = run('git diff --shortstat', cwd);
   const stagedRaw = run('git diff --cached --shortstat', cwd);
 

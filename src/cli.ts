@@ -10,6 +10,28 @@ import type { DaemonMessage, SessionInfo } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Injected by esbuild at release build time; falls back to dev sentinel
+declare const DEVPILOT_VERSION: string;
+const VERSION =
+  typeof DEVPILOT_VERSION !== 'undefined' ? DEVPILOT_VERSION : '0.1.0-dev';
+
+function readConfig(): { port?: number } {
+  const configDir =
+    process.env.DEVPILOT_ROOT ?? path.join(process.env.HOME ?? '', '.devpilot');
+  try {
+    return JSON.parse(
+      fs.readFileSync(path.join(configDir, 'config.json'), 'utf-8')
+    ) as {
+      port?: number;
+    };
+  } catch {
+    return {};
+  }
+}
+
+const config = readConfig();
+const DEFAULT_PORT = String(config.port ?? process.env.DEVPILOT_PORT ?? '3010');
+
 function getLocalIp(): string {
   try {
     const result = execSync(
@@ -28,7 +50,9 @@ async function ensureDaemon(port: number): Promise<void> {
   const { dir } = getDaemonPaths();
   fs.mkdirSync(dir, { recursive: true });
 
-  const daemonScript = path.join(__dirname, 'daemon.js');
+  const daemonScript = process.env.DEVPILOT_ROOT
+    ? path.join(process.env.DEVPILOT_ROOT, 'lib', 'daemon.mjs')
+    : path.join(__dirname, 'daemon.js');
   const logFile = path.join(dir, 'daemon.log');
   const out = fs.openSync(logFile, 'a');
 
@@ -192,14 +216,14 @@ const program = new Command();
 program
   .name('devpilot')
   .description('Remote dev session dashboard')
-  .version('0.1.0');
+  .version(VERSION);
 
 program
   .command('start')
   .description('Start a new session')
   .argument('[command]', 'Command to run', process.env.SHELL ?? 'bash')
   .option('-n, --name <name>', 'Session name')
-  .option('-p, --port <port>', 'Web server port', '3010')
+  .option('-p, --port <port>', 'Web server port', DEFAULT_PORT)
   .action(async (command: string, opts: { name?: string; port: string }) => {
     const port = parseInt(opts.port, 10);
 
@@ -248,7 +272,7 @@ program
   .command('attach')
   .description('Attach to a running session')
   .argument('<session>', 'Session ID')
-  .option('-p, --port <port>', 'Web server port', '3010')
+  .option('-p, --port <port>', 'Web server port', DEFAULT_PORT)
   .action(async (sessionId: string, opts: { port: string }) => {
     if (!isDaemonRunning()) {
       console.error('No daemon running. Start a session first.');
@@ -316,7 +340,7 @@ program
 program
   .command('status')
   .description('Show daemon and session status')
-  .option('-p, --port <port>', 'Web server port', '3010')
+  .option('-p, --port <port>', 'Web server port', DEFAULT_PORT)
   .action(async (opts: { port: string }) => {
     if (!isDaemonRunning()) {
       console.log('No daemon running.');
@@ -332,6 +356,126 @@ program
 
     for (const s of sessions) {
       console.log(`  ${s.id}  ${s.name}  ${s.command}  ${s.cwd}`);
+    }
+  });
+
+program
+  .command('shutdown')
+  .description('Stop all sessions and shut down the daemon')
+  .action(async () => {
+    if (!isDaemonRunning()) {
+      console.log('No daemon running.');
+      return;
+    }
+    await sendToDaemon({ type: 'shutdown' });
+    console.log('Daemon shut down.');
+  });
+
+program
+  .command('update')
+  .description(
+    'Update devpilot to the latest version (standalone installs only)'
+  )
+  .option('--check', 'Check for updates without installing')
+  .action(async (opts: { check?: boolean }) => {
+    const root = process.env.DEVPILOT_ROOT;
+    if (!root) {
+      console.error('update: only supported for standalone installs.');
+      console.error('If installed via npm, use: npm update -g devpilot');
+      process.exit(1);
+    }
+
+    const { version: currentVersion } = JSON.parse(
+      fs.readFileSync(path.join(root, 'version.json'), 'utf-8')
+    ) as { version: string };
+
+    const resp = await fetch(
+      'https://api.github.com/repos/thoughtminers/devpilot/releases/latest',
+      { headers: { 'User-Agent': 'devpilot' } }
+    );
+    if (!resp.ok) {
+      console.error(`Failed to fetch release info: HTTP ${resp.status}`);
+      process.exit(1);
+    }
+
+    const release = (await resp.json()) as {
+      tag_name: string;
+      assets: { name: string; browser_download_url: string }[];
+    };
+    const latestVersion = release.tag_name.replace(/^v/, '');
+
+    if (currentVersion === latestVersion) {
+      console.log(`Already up to date (v${currentVersion})`);
+      return;
+    }
+
+    console.log(`Update available: v${currentVersion} → v${latestVersion}`);
+    if (opts.check) return;
+
+    const platform = process.platform === 'darwin' ? 'darwin' : 'linux';
+    const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+    const tarName = `devpilot-${latestVersion}-${platform}-${arch}.tar.gz`;
+    const sha256Name = `${tarName}.sha256`;
+
+    const tarAsset = release.assets.find(a => a.name === tarName);
+    const sha256Asset = release.assets.find(a => a.name === sha256Name);
+    if (!tarAsset || !sha256Asset) {
+      console.error(`No release asset found for ${platform}-${arch}`);
+      process.exit(1);
+    }
+
+    const tmpDir = fs.mkdtempSync(
+      path.join(path.dirname(root), '.devpilot-update-')
+    );
+    try {
+      const tarPath = path.join(tmpDir, tarName);
+      console.log(`Downloading ${tarName}...`);
+
+      const tarResp = await fetch(tarAsset.browser_download_url);
+      if (!tarResp.ok)
+        throw new Error(`Download failed: HTTP ${tarResp.status}`);
+      fs.writeFileSync(tarPath, Buffer.from(await tarResp.arrayBuffer()));
+
+      // Verify SHA256
+      const sha256Resp = await fetch(sha256Asset.browser_download_url);
+      const expectedHash = (await sha256Resp.text()).trim().split(/\s/)[0];
+      const { createHash } = await import('node:crypto');
+      const actualHash = createHash('sha256')
+        .update(fs.readFileSync(tarPath))
+        .digest('hex');
+      if (actualHash !== expectedHash) {
+        console.error('Checksum mismatch — aborting update.');
+        process.exit(1);
+      }
+
+      // Extract
+      const extractDir = path.join(tmpDir, 'extracted');
+      fs.mkdirSync(extractDir);
+      execSync(`tar -xzf "${tarPath}" -C "${extractDir}"`);
+      const extracted = fs.readdirSync(extractDir)[0];
+      const newRoot = path.join(extractDir, extracted);
+
+      // Atomic swap
+      const backup = `${root}-backup`;
+      fs.renameSync(root, backup);
+      try {
+        fs.renameSync(newRoot, root);
+      } catch (err) {
+        fs.renameSync(backup, root); // roll back
+        throw err;
+      }
+
+      // Preserve user config across the swap
+      const savedConfig = path.join(backup, 'config.json');
+      if (fs.existsSync(savedConfig)) {
+        fs.copyFileSync(savedConfig, path.join(root, 'config.json'));
+      }
+
+      fs.rmSync(backup, { recursive: true, force: true });
+
+      console.log(`Updated to v${latestVersion}`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 

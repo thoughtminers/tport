@@ -90,6 +90,13 @@ export async function startDaemon(port = DEFAULT_PORT): Promise<void> {
         return;
       }
 
+      if (msg.type === 'shutdown') {
+        socket.write(JSON.stringify({ type: 'shutdown_ok' }) + '\n');
+        socket.end();
+        setImmediate(cleanup);
+        return;
+      }
+
       const response = handleDaemonMessage(sessionManager, msg);
       socket.write(JSON.stringify(response) + '\n');
     });

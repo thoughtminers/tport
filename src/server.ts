@@ -6,12 +6,26 @@ import fastifyWebsocket from '@fastify/websocket';
 import Fastify from 'fastify';
 
 import { getFileTree, readFileContent } from './core/files.js';
-import { commitStaged, getDiff, getDiffStats, getLog, getStagedDiff, getStatus, getUnstagedDiff, getUntrackedFiles, isGitRepo, stageFile, unstageFile } from './core/git.js';
+import {
+  commitStaged,
+  getDiff,
+  getDiffStats,
+  getLog,
+  getStagedDiff,
+  getStatus,
+  getUnstagedDiff,
+  getUntrackedFiles,
+  isGitRepo,
+  stageFile,
+  unstageFile,
+} from './core/git.js';
 import type { SessionManager } from './core/session.js';
 import type { WsClientMessage } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const PUBLIC_DIR = process.env.DEVPILOT_ROOT
+  ? path.join(process.env.DEVPILOT_ROOT, 'lib', 'public')
+  : path.join(__dirname, '..', 'public');
 
 export function createServer(sessionManager: SessionManager) {
   const app = Fastify({ logger: false });
@@ -150,7 +164,8 @@ export function createServer(sessionManager: SessionManager) {
     async (request, reply) => {
       const cwd = getSessionCwd(request.query.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd)) return reply.code(400).send({ error: 'Not a git repo' });
+      if (!isGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
       return {
         diff: getDiff(cwd),
         staged: getStagedDiff(cwd),
@@ -166,7 +181,8 @@ export function createServer(sessionManager: SessionManager) {
     async (request, reply) => {
       const cwd = getSessionCwd(request.query.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd)) return reply.code(400).send({ error: 'Not a git repo' });
+      if (!isGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
       return { files: getStatus(cwd) };
     }
   );
@@ -176,7 +192,8 @@ export function createServer(sessionManager: SessionManager) {
     async (request, reply) => {
       const cwd = getSessionCwd(request.query.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd)) return reply.code(400).send({ error: 'Not a git repo' });
+      if (!isGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
       const n = parseInt(request.query.n ?? '20', 10);
       return { commits: getLog(cwd, n) };
     }
@@ -187,7 +204,8 @@ export function createServer(sessionManager: SessionManager) {
     async (request, reply) => {
       const cwd = getSessionCwd(request.body.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd)) return reply.code(400).send({ error: 'Not a git repo' });
+      if (!isGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
       try {
         stageFile(cwd, request.body.file);
         return { ok: true };
@@ -202,7 +220,8 @@ export function createServer(sessionManager: SessionManager) {
     async (request, reply) => {
       const cwd = getSessionCwd(request.body.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd)) return reply.code(400).send({ error: 'Not a git repo' });
+      if (!isGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
       try {
         unstageFile(cwd, request.body.file);
         return { ok: true };
@@ -217,8 +236,10 @@ export function createServer(sessionManager: SessionManager) {
     async (request, reply) => {
       const cwd = getSessionCwd(request.body.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd)) return reply.code(400).send({ error: 'Not a git repo' });
-      if (!request.body.message?.trim()) return reply.code(400).send({ error: 'Message required' });
+      if (!isGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
+      if (!request.body.message?.trim())
+        return reply.code(400).send({ error: 'Message required' });
       try {
         const output = commitStaged(cwd, request.body.message);
         return { ok: true, output };

@@ -1,0 +1,15 @@
+{
+	"cSpell.words": [
+		"eslint",
+		"prettier",
+		"typescript",
+		"autoImports",
+	],
+	"js/ts.preferences.includePackageJsonAutoImports": "on",
+	"js/ts.suggest.autoImports": true,
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	},
+	"editor.defaultFormatter": "esbenp.prettier-vscode"
+}
