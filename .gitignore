@@ -5,3 +5,4 @@ dist-release/
 .env
 .claude/
 moonchild/
+CLAUDE.md
