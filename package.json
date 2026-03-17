@@ -1,6 +1,6 @@
 {
   "name": "devpilot",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Remote dev session dashboard. Monitor and interact with your terminal sessions from your phone.",
   "type": "module",
   "main": "dist/cli.js",
