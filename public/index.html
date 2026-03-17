@@ -1034,7 +1034,8 @@
         const cell = line.getCell(col);
         if (!cell) continue;
         const ch = cell.getChars();
-        if (ch === '') continue; // wide char continuation
+        if (!ch && cell.getWidth() === 0) continue; // wide char continuation
+        const displayCh = ch || ' '; // empty cell = space
 
         let style = '';
         const fg = getCellFg(cell);
@@ -1054,7 +1055,7 @@
           prevStyle = style;
         }
 
-        html += escapeHtml(ch);
+        html += escapeHtml(displayCh);
       }
 
       if (spanOpen) html += '</span>';
