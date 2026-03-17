@@ -205,6 +205,7 @@ function handleDaemonMessage(
 // Run directly when this file is the entry point
 const isMain =
   process.argv[1]?.endsWith('daemon.js') ||
+  process.argv[1]?.endsWith('daemon.mjs') ||
   process.argv[1]?.endsWith('daemon.ts');
 
 if (isMain) {
