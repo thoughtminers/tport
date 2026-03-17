@@ -13,6 +13,70 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5/css/xterm.min.css">
   <style>
+    :root {
+      --bg-primary: #0D1117;
+      --bg-secondary: #161B22;
+      --bg-tertiary: #21262D;
+      --border: #30363D;
+      --border-hover: #484F58;
+      --text-primary: #C9D1D9;
+      --text-secondary: #8B949E;
+      --text-muted: #6E7681;
+      --accent: #58A6FF;
+      --accent-hover: #4090E0;
+      --selection: #264F78;
+      --green: #238636;
+      --green-hover: #2ea043;
+      --green-bright: #3FB950;
+      --red: #F85149;
+      --yellow: #D29922;
+      --diff-add-bg: rgba(35, 134, 54, 0.15);
+      --diff-del-bg: rgba(248, 81, 73, 0.15);
+      --diff-hunk-bg: rgba(88, 166, 255, 0.1);
+      --green-badge-bg: rgba(35, 134, 54, 0.2);
+      --yellow-badge-bg: rgba(210, 153, 34, 0.2);
+      --muted-badge-bg: rgba(139, 148, 158, 0.2);
+      --accent-border: rgba(88, 166, 255, 0.3);
+      --green-border: rgba(35, 134, 54, 0.4);
+      --red-border: rgba(248, 81, 73, 0.4);
+      --shadow: rgba(0, 0, 0, 0.4);
+      --dot-glow: rgba(35, 134, 54, 0.6);
+      --dot-glow-red: rgba(248, 81, 73, 0.6);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F6F8FA;
+        --bg-tertiary: #EEF1F5;
+        --border: #D0D7DE;
+        --border-hover: #AFB8C1;
+        --text-primary: #1F2328;
+        --text-secondary: #656D76;
+        --text-muted: #8C959F;
+        --accent: #0969DA;
+        --accent-hover: #0860CA;
+        --selection: #B6E3FF;
+        --green: #1A7F37;
+        --green-hover: #218B3C;
+        --green-bright: #1A7F37;
+        --red: #CF222E;
+        --yellow: #9A6700;
+        --diff-add-bg: rgba(26, 127, 55, 0.1);
+        --diff-del-bg: rgba(207, 34, 46, 0.1);
+        --diff-hunk-bg: rgba(9, 105, 218, 0.08);
+        --green-badge-bg: rgba(26, 127, 55, 0.12);
+        --yellow-badge-bg: rgba(154, 103, 0, 0.12);
+        --muted-badge-bg: rgba(101, 109, 118, 0.12);
+        --accent-border: rgba(9, 105, 218, 0.3);
+        --green-border: rgba(26, 127, 55, 0.4);
+        --red-border: rgba(207, 34, 46, 0.4);
+        --shadow: rgba(31, 35, 40, 0.15);
+        --dot-glow: rgba(26, 127, 55, 0.5);
+        --dot-glow-red: rgba(207, 34, 46, 0.5);
+      }
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -26,8 +90,8 @@
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0D1117;
-      color: #C9D1D9;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       position: fixed;
       top: 0;
       left: 0;
@@ -51,8 +115,8 @@
 
     /* ── Top Bar ── */
     .top-bar {
-      background: #161B22;
-      border-bottom: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
       padding: 12px 16px;
       padding-top: max(12px, env(safe-area-inset-top));
       display: flex;
@@ -74,15 +138,15 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #238636;
-      box-shadow: 0 0 8px rgba(35, 134, 54, 0.6);
+      background: var(--green);
+      box-shadow: 0 0 8px var(--dot-glow);
       animation: pulse 2s ease-in-out infinite;
       flex-shrink: 0;
     }
 
     .status-dot.disconnected {
-      background: #F85149;
-      box-shadow: 0 0 8px rgba(248, 81, 73, 0.6);
+      background: var(--red);
+      box-shadow: 0 0 8px var(--dot-glow-red);
     }
 
     @keyframes pulse {
@@ -99,10 +163,10 @@
 
     .project-selector {
       background: transparent;
-      border: 1px solid #30363D;
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 6px 12px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -115,8 +179,8 @@
     }
 
     .project-selector:hover {
-      background: #21262D;
-      border-color: #58A6FF;
+      background: var(--bg-tertiary);
+      border-color: var(--accent);
     }
 
     .project-name {
@@ -128,12 +192,12 @@
     }
 
     .project-icon {
-      color: #58A6FF;
+      color: var(--accent);
       flex-shrink: 0;
     }
 
     .dropdown-icon {
-      color: #8B949E;
+      color: var(--text-secondary);
       font-size: 12px;
       margin-left: auto;
       flex-shrink: 0;
@@ -150,7 +214,7 @@
     .icon-btn {
       background: transparent;
       border: none;
-      color: #8B949E;
+      color: var(--text-secondary);
       cursor: pointer;
       font-size: 18px;
       padding: 4px;
@@ -158,7 +222,7 @@
     }
 
     .icon-btn:hover {
-      color: #58A6FF;
+      color: var(--accent);
     }
 
     /* Session dropdown */
@@ -168,11 +232,11 @@
       top: 52px;
       left: 16px;
       right: 16px;
-      background: #161B22;
-      border: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
       border-radius: 8px;
       z-index: 100;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 24px var(--shadow);
       max-height: 300px;
       overflow-y: auto;
     }
@@ -184,12 +248,12 @@
     .session-option {
       padding: 12px 16px;
       cursor: pointer;
-      border-bottom: 1px solid #21262D;
+      border-bottom: 1px solid var(--bg-tertiary);
       transition: background 0.2s ease;
     }
 
     .session-option:hover {
-      background: #21262D;
+      background: var(--bg-tertiary);
     }
 
     .session-option:last-child {
@@ -199,13 +263,13 @@
     .session-option-name {
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       margin-bottom: 2px;
     }
 
     .session-option-meta {
       font-size: 11px;
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     /* ── Content Area ── */
@@ -237,7 +301,7 @@
     #terminal-container {
       flex: 1;
       padding: 4px;
-      background: #0D1117;
+      background: var(--bg-primary);
       overflow: hidden;
       position: relative;
     }
@@ -251,7 +315,7 @@
       display: none;
       flex-direction: column;
       height: 100%;
-      background: #0D1117;
+      background: var(--bg-primary);
     }
 
     #mobile-terminal-output {
@@ -262,7 +326,7 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       line-height: 1.5;
-      color: #C9D1D9;
+      color: var(--text-primary);
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -272,17 +336,17 @@
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
-      background: #161B22;
-      border-top: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
 
     .quick-btn {
-      background: #21262D;
-      border: 1px solid #30363D;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
       border-radius: 16px;
       padding: 8px 16px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       font-size: 14px;
       font-weight: 600;
       font-family: 'JetBrains Mono', monospace;
@@ -292,33 +356,33 @@
     }
 
     .quick-btn:active {
-      background: #30363D;
+      background: var(--border);
     }
 
     .quick-btn.icon {
       padding: 8px 12px;
       font-size: 13px;
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     .quick-btn.toggle-btn {
-      color: #58A6FF;
-      border-color: rgba(88, 166, 255, 0.3);
+      color: var(--accent);
+      border-color: var(--accent-border);
     }
 
     .quick-btn.toggle-btn.active {
-      background: #58A6FF;
-      color: #0D1117;
+      background: var(--accent);
+      color: var(--bg-primary);
     }
 
     .quick-btn.yes {
-      color: #238636;
-      border-color: rgba(35, 134, 54, 0.4);
+      color: var(--green);
+      border-color: var(--green-border);
     }
 
     .quick-btn.no {
-      color: #F85149;
-      border-color: rgba(248, 81, 73, 0.4);
+      color: var(--red);
+      border-color: var(--red-border);
     }
 
     .input-mode {
@@ -349,11 +413,11 @@
 
     .mobile-input {
       flex: 1;
-      background: #0D1117;
-      border: 1px solid #30363D;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
       border-radius: 18px;
       padding: 8px 14px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       font-size: 14px;
       font-family: 'Inter', sans-serif;
       outline: none;
@@ -365,20 +429,20 @@
     }
 
     .mobile-input:focus {
-      border-color: #58A6FF;
+      border-color: var(--accent);
     }
 
     /* ── Diffs View ── */
     .diffs-view {
       overflow-y: auto;
-      background: #0D1117;
+      background: var(--bg-primary);
       height: 100%;
     }
 
     .diff-header {
       padding: 16px;
-      background: #161B22;
-      border-bottom: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -405,15 +469,15 @@
     }
 
     .stat-additions {
-      color: #238636;
+      color: var(--green);
     }
 
     .stat-deletions {
-      color: #F85149;
+      color: var(--red);
     }
 
     .stat-files {
-      color: #58A6FF;
+      color: var(--accent);
     }
 
     .diff-actions {
@@ -423,11 +487,11 @@
     }
 
     .refresh-btn {
-      background: #21262D;
-      border: 1px solid #30363D;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 8px 14px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       font-size: 13px;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -437,8 +501,8 @@
     }
 
     .refresh-btn:hover {
-      background: #30363D;
-      border-color: #58A6FF;
+      background: var(--border);
+      border-color: var(--accent);
     }
 
     .diff-files-list {
@@ -446,8 +510,8 @@
     }
 
     .diff-file-card {
-      background: #161B22;
-      border: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
       border-radius: 6px;
       margin-bottom: 12px;
       overflow: hidden;
@@ -455,11 +519,11 @@
     }
 
     .diff-file-card:hover {
-      border-color: #484F58;
+      border-color: var(--border-hover);
     }
 
     .diff-file-card.expanded {
-      border-color: #58A6FF;
+      border-color: var(--accent);
     }
 
     .diff-file-header {
@@ -479,7 +543,7 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       font-weight: 500;
-      color: #C9D1D9;
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -487,7 +551,7 @@
 
     .diff-file-status {
       font-size: 11px;
-      color: #8B949E;
+      color: var(--text-secondary);
       margin-top: 2px;
     }
 
@@ -506,17 +570,17 @@
     }
 
     .additions {
-      color: #238636;
+      color: var(--green);
     }
 
     .deletions {
-      color: #F85149;
+      color: var(--red);
     }
 
     .diff-file-content {
       display: none;
-      background: #0D1117;
-      border-top: 1px solid #30363D;
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border);
       padding: 0;
       font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
@@ -534,22 +598,22 @@
     }
 
     .diff-line-add {
-      background: rgba(35, 134, 54, 0.15);
-      color: #C9D1D9;
+      background: var(--diff-add-bg);
+      color: var(--text-primary);
     }
 
     .diff-line-del {
-      background: rgba(248, 81, 73, 0.15);
-      color: #C9D1D9;
+      background: var(--diff-del-bg);
+      color: var(--text-primary);
     }
 
     .diff-line-hunk {
-      background: rgba(88, 166, 255, 0.1);
-      color: #58A6FF;
+      background: var(--diff-hunk-bg);
+      color: var(--accent);
     }
 
     .diff-line-context {
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     .diff-section-header {
@@ -564,15 +628,15 @@
     }
 
     .diff-section-header.staged {
-      color: #238636;
+      color: var(--green);
     }
 
     .diff-section-header.unstaged {
-      color: #D29922;
+      color: var(--yellow);
     }
 
     .diff-section-header.untracked {
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     .diff-section-header .badge {
@@ -583,15 +647,15 @@
     }
 
     .diff-section-header.staged .badge {
-      background: rgba(35, 134, 54, 0.2);
+      background: var(--green-badge-bg);
     }
 
     .diff-section-header.unstaged .badge {
-      background: rgba(210, 153, 34, 0.2);
+      background: var(--yellow-badge-bg);
     }
 
     .diff-section-header.untracked .badge {
-      background: rgba(139, 148, 158, 0.2);
+      background: var(--muted-badge-bg);
     }
 
     .untracked-file {
@@ -601,12 +665,12 @@
       gap: 10px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
-      color: #8B949E;
-      border-bottom: 1px solid #21262D;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--bg-tertiary);
     }
 
     .untracked-file i {
-      color: #8B949E;
+      color: var(--text-secondary);
       font-size: 12px;
     }
 
@@ -614,7 +678,7 @@
       width: 20px;
       height: 20px;
       border-radius: 4px;
-      border: 2px solid #30363D;
+      border: 2px solid var(--border);
       background: transparent;
       cursor: pointer;
       display: flex;
@@ -627,8 +691,8 @@
     }
 
     .stage-checkbox.checked {
-      background: #238636;
-      border-color: #238636;
+      background: var(--green);
+      border-color: var(--green);
       color: #fff;
     }
 
@@ -637,8 +701,8 @@
     }
 
     .commit-section {
-      background: #161B22;
-      border-bottom: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
       overflow: hidden;
       max-height: 0;
       transition: max-height 0.3s ease;
@@ -656,11 +720,11 @@
     }
 
     .commit-input {
-      background: #0D1117;
-      border: 1px solid #30363D;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 8px 12px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       font-size: 13px;
       font-family: 'Inter', sans-serif;
       outline: none;
@@ -668,11 +732,11 @@
     }
 
     .commit-input:focus {
-      border-color: #58A6FF;
+      border-color: var(--accent);
     }
 
     .commit-btn {
-      background: #238636;
+      background: var(--green);
       border: none;
       border-radius: 6px;
       padding: 8px 14px;
@@ -688,7 +752,7 @@
     }
 
     .commit-btn:hover {
-      background: #2ea043;
+      background: var(--green-hover);
     }
 
     .commit-btn:disabled {
@@ -699,7 +763,7 @@
     .empty-state {
       text-align: center;
       padding: 60px 20px;
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     .empty-state i {
@@ -717,12 +781,12 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      background: #0D1117;
+      background: var(--bg-primary);
     }
 
     .files-header {
-      background: #161B22;
-      border-bottom: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
       padding: 12px 16px;
       flex-shrink: 0;
     }
@@ -734,17 +798,17 @@
       margin-bottom: 8px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
-      color: #8B949E;
+      color: var(--text-secondary);
       overflow-x: auto;
       white-space: nowrap;
     }
 
     .breadcrumb-item {
-      color: #58A6FF;
+      color: var(--accent);
     }
 
     .breadcrumb-separator {
-      color: #484F58;
+      color: var(--border-hover);
     }
 
     .file-list {
@@ -759,18 +823,18 @@
       padding: 10px 16px;
       cursor: pointer;
       transition: background 0.2s ease;
-      border-bottom: 1px solid #21262D;
+      border-bottom: 1px solid var(--bg-tertiary);
     }
 
     .file-item:hover {
-      background: #161B22;
+      background: var(--bg-secondary);
     }
 
     .file-item-icon {
       width: 32px;
       height: 32px;
       border-radius: 6px;
-      background: #21262D;
+      background: var(--bg-tertiary);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -780,11 +844,11 @@
     }
 
     .file-item-icon.folder-icon {
-      color: #58A6FF;
+      color: var(--accent);
     }
 
     .file-item-icon.file-icon {
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     .file-item-icon.ts-icon {
@@ -800,7 +864,7 @@
     }
 
     .file-item-icon.md-icon {
-      color: #C9D1D9;
+      color: var(--text-primary);
     }
 
     .file-item-icon.css-icon {
@@ -818,7 +882,7 @@
 
     .file-item-name {
       font-size: 14px;
-      color: #C9D1D9;
+      color: var(--text-primary);
       font-family: 'JetBrains Mono', monospace;
       white-space: nowrap;
       overflow: hidden;
@@ -827,12 +891,12 @@
 
     .file-item-meta {
       font-size: 11px;
-      color: #8B949E;
+      color: var(--text-secondary);
       margin-top: 2px;
     }
 
     .file-item-chevron {
-      color: #8B949E;
+      color: var(--text-secondary);
       font-size: 12px;
       margin-left: auto;
       flex-shrink: 0;
@@ -881,8 +945,8 @@
     }
 
     .file-viewer-header {
-      background: #161B22;
-      border-bottom: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
       padding: 12px 16px;
       display: flex;
       align-items: center;
@@ -892,7 +956,7 @@
     .file-viewer-back {
       background: transparent;
       border: none;
-      color: #58A6FF;
+      color: var(--accent);
       cursor: pointer;
       font-size: 16px;
       padding: 4px;
@@ -901,7 +965,7 @@
     .file-viewer-name {
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
-      color: #C9D1D9;
+      color: var(--text-primary);
     }
 
     .file-viewer-content {
@@ -912,14 +976,14 @@
       font-size: 12px;
       line-height: 1.6;
       white-space: pre-wrap;
-      color: #C9D1D9;
-      background: #0D1117;
+      color: var(--text-primary);
+      background: var(--bg-primary);
     }
 
     /* ── Bottom Navigation ── */
     .bottom-nav {
-      background: #161B22;
-      border-top: 1px solid #30363D;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
       padding: 8px 0;
       padding-bottom: max(8px, env(safe-area-inset-bottom));
       display: flex;
@@ -937,18 +1001,18 @@
       padding: 8px;
       background: transparent;
       border: none;
-      color: #8B949E;
+      color: var(--text-secondary);
       cursor: pointer;
       transition: color 0.2s ease;
       font-family: 'Inter', sans-serif;
     }
 
     .nav-item:hover {
-      color: #C9D1D9;
+      color: var(--text-primary);
     }
 
     .nav-item.active {
-      color: #58A6FF;
+      color: var(--accent);
     }
 
     .nav-icon {
@@ -964,15 +1028,15 @@
     .loading {
       text-align: center;
       padding: 40px;
-      color: #8B949E;
+      color: var(--text-secondary);
     }
 
     .spinner {
       display: inline-block;
       width: 24px;
       height: 24px;
-      border: 2px solid #30363D;
-      border-top-color: #58A6FF;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: 12px;
@@ -1034,6 +1098,7 @@
                   class="fas fa-turn-down fa-rotate-90"></i></button>
               <button class="quick-btn" onclick="sendRaw('\x1b[Z')"
                 style="font-size:11px;padding:8px 10px;">⇧Tab</button>
+              <button class="quick-btn" onclick="sendRaw('\x1b')" style="font-size:11px;padding:8px 10px;">Esc</button>
               <button class="quick-btn icon" onclick="sendQuick('0')">0</button>
               <button class="quick-btn icon" onclick="sendQuick('1')">1</button>
               <button class="quick-btn icon" onclick="sendQuick('2')">2</button>
@@ -1161,13 +1226,15 @@
       hiddenTerm.open(hiddenDiv);
     } else {
       const { FitAddon } = await import('https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0/+esm');
+      const cs = getComputedStyle(document.documentElement);
+      const getVar = (v) => cs.getPropertyValue(v).trim();
       term = new Terminal({
         cursorBlink: true,
         theme: {
-          background: '#0D1117',
-          foreground: '#C9D1D9',
-          cursor: '#58A6FF',
-          selectionBackground: '#264F78',
+          background: getVar('--bg-primary'),
+          foreground: getVar('--text-primary'),
+          cursor: getVar('--accent'),
+          selectionBackground: getVar('--selection'),
         },
         fontSize: 14,
         fontFamily: "'JetBrains Mono', monospace",
@@ -1436,7 +1503,7 @@
         }
         notificationsEnabled = true;
         document.getElementById('notif-icon').className = 'fas fa-bell';
-        document.getElementById('notif-btn').style.color = '#58A6FF';
+        document.getElementById('notif-btn').style.color = 'var(--accent)';
       } else {
         notificationsEnabled = false;
         document.getElementById('notif-icon').className = 'fas fa-bell-slash';
@@ -1805,6 +1872,19 @@
       }
     });
 
+
+    // ── Theme change listener ──
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (term) {
+        const s = getComputedStyle(document.documentElement);
+        term.options.theme = {
+          background: s.getPropertyValue('--bg-primary').trim(),
+          foreground: s.getPropertyValue('--text-primary').trim(),
+          cursor: s.getPropertyValue('--accent').trim(),
+          selectionBackground: s.getPropertyValue('--selection').trim(),
+        };
+      }
+    });
 
     // ── Init ──
     connect();
