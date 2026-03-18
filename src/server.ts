@@ -25,7 +25,10 @@ const PUBLIC_DIR = process.env.TPORT_ROOT
   ? path.join(process.env.TPORT_ROOT, 'lib', 'public')
   : path.join(__dirname, '..', 'public');
 
-export function createServer(sessionManager: SessionManager) {
+export function createServer(
+  sessionManager: SessionManager,
+  passwordHash?: string
+) {
   const app = Fastify({ logger: false });
 
   // Static files
@@ -34,11 +37,41 @@ export function createServer(sessionManager: SessionManager) {
     prefix: '/',
   });
 
+  // Auth hook — skip if no password configured
+  if (passwordHash) {
+    app.addHook('onRequest', async (request, reply) => {
+      // Allow static files (served by @fastify/static)
+      if (!request.url.startsWith('/api/') && !request.url.startsWith('/ws')) {
+        return;
+      }
+
+      // WebSocket auth is handled via query param in the WS route
+      if (request.url.startsWith('/ws')) {
+        return;
+      }
+
+      const token = request.headers['x-tport-auth'] as string | undefined;
+      if (token !== passwordHash) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+    });
+  }
+
   // WebSocket plugin + route
   app.register(fastifyWebsocket);
 
   app.register(async function wsRoutes(fastify) {
     fastify.get('/ws', { websocket: true }, (socket, _req) => {
+      // Auth check for WebSocket
+      if (passwordHash) {
+        const url = new URL(_req.url ?? '', `http://${_req.headers.host}`);
+        const token = url.searchParams.get('token');
+        if (token !== passwordHash) {
+          socket.send(JSON.stringify({ type: 'error', error: 'Unauthorized' }));
+          socket.close();
+          return;
+        }
+      }
       let subscribedSessionId: string | null = null;
       let unsubscribe: (() => void) | null = null;
 

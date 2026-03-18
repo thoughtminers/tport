@@ -60,8 +60,9 @@ export async function startDaemon(port = DEFAULT_PORT): Promise<void> {
     fs.unlinkSync(SOCK_FILE);
   }
 
+  const passwordHash = process.env.TPORT_PASSWORD_HASH || undefined;
   const sessionManager = new SessionManager();
-  const app = createServer(sessionManager);
+  const app = createServer(sessionManager, passwordHash);
 
   // Start the HTTP + WebSocket server
   const address = await app.listen({ port, host: '0.0.0.0' });

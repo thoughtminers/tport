@@ -4,6 +4,8 @@ Remote dev session dashboard. Monitor and interact with your terminal sessions f
 
 Start Claude Code (or any terminal command), walk away, and pick it up from your phone — see live terminal output, send input, review diffs, and browse files.
 
+> **Warning:** tport exposes a live terminal session over your local network. Anyone with access to the dashboard can execute commands on your machine. Always set a password and only use on trusted networks. Use at your own risk — the authors are not responsible for any damage or unauthorized access resulting from the use of this tool.
+
 ## Install
 
 ```sh
@@ -11,6 +13,13 @@ curl -fsSL https://raw.githubusercontent.com/thoughtminers/tport/main/scripts/in
 ```
 
 Installs to `~/.tport` and adds it to your PATH. Supports macOS (Apple Silicon) and Linux (x64).
+
+During install you'll be asked to set an optional dashboard password. To change it later:
+
+```sh
+tport password            # set or change password
+tport password --remove   # remove password (open access)
+```
 
 To change the default port, edit `~/.tport/config.json`:
 
@@ -84,6 +93,7 @@ tport attach <session>      # reattach to a session
 - **Files** — read-only project file browser
 - **Multi-session** — run multiple sessions, switch between them
 - **Mobile-first** — designed for phones, works on desktop too
+- **Password protection** — optional password to lock down the dashboard
 - **No multiplexer** — no tmux, no Zellij, no extra keybindings or UI
 
 ## Why not tmux / Zellij / screen?
@@ -105,6 +115,8 @@ tport list                  # list active sessions
 tport stop <session>        # stop a session
 tport stop --all            # stop all sessions
 tport status                # show dashboard URL and session info
+tport password              # set or change the dashboard password
+tport password --remove     # remove password protection
 tport shutdown              # stop all sessions and shut down the daemon
 tport update                # update to the latest version
 ```

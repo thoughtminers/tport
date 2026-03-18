@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>devpilot</title>
+  <title>tport</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -100,6 +100,82 @@
       overflow: hidden;
       overscroll-behavior: none;
       -webkit-font-smoothing: antialiased;
+    }
+
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box {
+      text-align: center;
+      padding: 2rem;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .login-icon {
+      font-size: 2.5rem;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .login-box h2 {
+      color: var(--text-primary);
+      font-size: 1.5rem;
+      margin: 0 0 0.25rem;
+    }
+
+    .login-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin: 0 0 1.5rem;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .login-input:focus {
+      border-color: var(--accent);
+    }
+
+    .login-error {
+      color: var(--red);
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    .login-btn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.7rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .login-btn:hover {
+      background: var(--accent-hover);
     }
 
     .app-container {
@@ -1051,6 +1127,23 @@
 </head>
 
 <body>
+  <!-- Login overlay (shown when password is required) -->
+  <div id="login-overlay" class="login-overlay" style="display:none;">
+    <div class="login-box">
+      <i class="fas fa-terminal login-icon"></i>
+      <h2>tport</h2>
+      <p class="login-subtitle">Enter password to access the dashboard</p>
+      <form id="login-form" onsubmit="return false;">
+        <input type="password" id="login-password" class="login-input" placeholder="Password"
+          autocomplete="current-password" autofocus>
+        <div id="login-error" class="login-error" style="display:none;">Wrong password</div>
+        <button type="submit" class="login-btn" id="login-btn">
+          <i class="fas fa-lock"></i> Log in
+        </button>
+      </form>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Top Bar -->
     <div class="top-bar">
@@ -1200,6 +1293,120 @@
   </div>
 
   <script type="module">
+    // ── Auth ──
+    let authToken = sessionStorage.getItem('tport-auth') || '';
+    let authRequired = false;
+
+    async function sha256(text) {
+      // crypto.subtle is only available in secure contexts (HTTPS/localhost)
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const data = new TextEncoder().encode(text);
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+      // Pure JS SHA-256 fallback for HTTP on local network
+      const K = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+      ];
+      const rr = (v, n) => (v >>> n) | (v << (32 - n));
+      const bytes = new TextEncoder().encode(text);
+      const len = bytes.length;
+      const bits = len * 8;
+      const padded = new Uint8Array(Math.ceil((len + 9) / 64) * 64);
+      padded.set(bytes);
+      padded[len] = 0x80;
+      const dv = new DataView(padded.buffer);
+      dv.setUint32(padded.length - 4, bits, false);
+      let [h0, h1, h2, h3, h4, h5, h6, h7] = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+      for (let off = 0; off < padded.length; off += 64) {
+        const w = new Array(64);
+        for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4, false);
+        for (let i = 16; i < 64; i++) {
+          const s0 = rr(w[i - 15], 7) ^ rr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+          const s1 = rr(w[i - 2], 17) ^ rr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+          w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+        }
+        let [a, b, c, d, e, f, g, h] = [h0, h1, h2, h3, h4, h5, h6, h7];
+        for (let i = 0; i < 64; i++) {
+          const S1 = rr(e, 6) ^ rr(e, 11) ^ rr(e, 25);
+          const ch = (e & f) ^ (~e & g);
+          const t1 = (h + S1 + ch + K[i] + w[i]) | 0;
+          const S0 = rr(a, 2) ^ rr(a, 13) ^ rr(a, 22);
+          const maj = (a & b) ^ (a & c) ^ (b & c);
+          const t2 = (S0 + maj) | 0;
+          h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+        }
+        h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0;
+        h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+      }
+      return [h0, h1, h2, h3, h4, h5, h6, h7].map(v => (v >>> 0).toString(16).padStart(8, '0')).join('');
+    }
+
+    function authFetch(url, opts = {}) {
+      if (authToken) {
+        opts.headers = { ...opts.headers, 'X-Tport-Auth': authToken };
+      }
+      return fetch(url, opts);
+    }
+
+    function showLogin() {
+      document.getElementById('login-overlay').style.display = 'flex';
+      document.querySelector('.app-container').style.display = 'none';
+      document.getElementById('login-password').focus();
+    }
+
+    function hideLogin() {
+      document.getElementById('login-overlay').style.display = 'none';
+      document.querySelector('.app-container').style.display = '';
+    }
+
+    // Check if auth is required
+    {
+      const probe = await fetch('/api/sessions');
+      if (probe.status === 401) {
+        authRequired = true;
+        if (!authToken) {
+          showLogin();
+        } else {
+          // Verify stored token
+          const verify = await authFetch('/api/sessions');
+          if (verify.status === 401) {
+            authToken = '';
+            sessionStorage.removeItem('tport-auth');
+            showLogin();
+          }
+        }
+      }
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async () => {
+      const input = document.getElementById('login-password');
+      const password = input.value;
+      if (!password) return;
+
+      const hash = await sha256(password);
+      const resp = await fetch('/api/sessions', { headers: { 'X-Tport-Auth': hash } });
+      if (resp.status === 401) {
+        document.getElementById('login-error').style.display = 'block';
+        input.value = '';
+        input.focus();
+        return;
+      }
+
+      authToken = hash;
+      sessionStorage.setItem('tport-auth', hash);
+      document.getElementById('login-error').style.display = 'none';
+      hideLogin();
+      connect();
+    });
+
     // ── State ──
     let ws = null;
     let currentSessionId = null;
@@ -1490,7 +1697,7 @@
           playBeep();
           if (document.hidden && Notification.permission === 'granted') {
             const match = clean.match(pattern)?.[0] || 'Action needed';
-            new Notification('devpilot', { body: match, tag: 'devpilot-attention' });
+            new Notification('tport', { body: match, tag: 'tport-attention' });
           }
           // Vibrate on mobile
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -1517,8 +1724,10 @@
 
     // ── WebSocket ──
     function connect() {
+      if (authRequired && !authToken) return;
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${proto}//${location.host}/ws`);
+      const tokenParam = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
+      ws = new WebSocket(`${proto}//${location.host}/ws${tokenParam}`);
 
       ws.onopen = () => {
         document.getElementById('status-dot').classList.remove('disconnected');
@@ -1550,7 +1759,8 @@
 
     // ── Sessions ──
     async function loadSessions() {
-      const resp = await fetch('/api/sessions');
+      const resp = await authFetch('/api/sessions');
+      if (resp.status === 401) { showLogin(); return; }
       sessions = await resp.json();
       updateSessionUI();
 
@@ -1639,7 +1849,7 @@
 
     async function loadDiffs() {
       if (!currentSessionId) return;
-      const resp = await fetch(`/api/diff?session=${currentSessionId}`);
+      const resp = await authFetch(`/api/diff?session=${currentSessionId}`);
       if (!resp.ok) return;
       const data = await resp.json();
 
@@ -1713,7 +1923,7 @@
     window.toggleStage = async function (file, isStaged, el) {
       if (!currentSessionId) return;
       const endpoint = isStaged ? '/api/unstage' : '/api/stage';
-      const resp = await fetch(endpoint, {
+      const resp = await authFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session: currentSessionId, file }),
@@ -1733,7 +1943,7 @@
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Committing...';
       try {
-        const resp = await fetch('/api/commit', {
+        const resp = await authFetch('/api/commit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session: currentSessionId, message }),
@@ -1755,7 +1965,7 @@
     // ── Files ──
     async function loadFiles() {
       if (!currentSessionId) return;
-      const resp = await fetch(`/api/files?session=${currentSessionId}`);
+      const resp = await authFetch(`/api/files?session=${currentSessionId}`);
       if (!resp.ok) return;
       const data = await resp.json();
 
@@ -1824,7 +2034,7 @@
 
     async function viewFile(filePath, fileName) {
       if (!currentSessionId) return;
-      const resp = await fetch(`/api/file?session=${currentSessionId}&path=${encodeURIComponent(filePath)}`);
+      const resp = await authFetch(`/api/file?session=${currentSessionId}&path=${encodeURIComponent(filePath)}`);
       if (!resp.ok) return;
       const data = await resp.json();
 
@@ -1891,7 +2101,9 @@
     });
 
     // ── Init ──
-    connect();
+    if (!authRequired || authToken) {
+      connect();
+    }
   </script>
 </body>
 

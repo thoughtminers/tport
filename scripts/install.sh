@@ -30,6 +30,25 @@ case "$ARCH" in
     ;;
 esac
 
+# ── Disclaimer ────────────────────────────────────────────────────────────────
+
+echo ""
+echo "WARNING: tport exposes a live terminal session over your local network."
+echo "Anyone with access to the dashboard can execute commands on your machine."
+echo "The authors are not responsible for any damage or unauthorized access"
+echo "resulting from the use of this tool."
+echo ""
+printf "Do you accept full responsibility and wish to continue? [y/N] "
+read -r ACCEPT
+case "$ACCEPT" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Installation cancelled."
+    exit 0
+    ;;
+esac
+echo ""
+
 # ── Fetch latest release ──────────────────────────────────────────────────────
 
 echo "Fetching latest tport release..."
@@ -110,7 +129,25 @@ if [ -n "$BACKUP" ] && [ -f "$BACKUP/config.json" ]; then
   cp "$BACKUP/config.json" "$CONFIG"
   rm -rf "$BACKUP"
 elif [ ! -f "$CONFIG" ]; then
-  printf '{\n  "port": 3010\n}\n' > "$CONFIG"
+  printf "Set a dashboard password (leave empty for no auth): "
+  read -r PASS
+  if [ -n "$PASS" ]; then
+    if command -v sha256sum >/dev/null 2>&1; then
+      HASH=$(printf '%s' "$PASS" | sha256sum | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+      HASH=$(printf '%s' "$PASS" | shasum -a 256 | awk '{print $1}')
+    else
+      echo "Warning: no sha256 tool found, skipping password setup."
+      HASH=""
+    fi
+    if [ -n "$HASH" ]; then
+      printf '{\n  "port": 3010,\n  "passwordHash": "%s"\n}\n' "$HASH" > "$CONFIG"
+    else
+      printf '{\n  "port": 3010\n}\n' > "$CONFIG"
+    fi
+  else
+    printf '{\n  "port": 3010\n}\n' > "$CONFIG"
+  fi
 fi
 
 # ── PATH setup ────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { execSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +20,7 @@ const VERSION =
         ) as { version: string }
       ).version;
 
-function readConfig(): { port?: number } {
+function readConfig(): { port?: number; passwordHash?: string } {
   const configDir =
     process.env.TPORT_ROOT ?? path.join(process.env.HOME ?? '', '.tport');
   try {
@@ -27,10 +28,54 @@ function readConfig(): { port?: number } {
       fs.readFileSync(path.join(configDir, 'config.json'), 'utf-8')
     ) as {
       port?: number;
+      passwordHash?: string;
     };
   } catch {
     return {};
   }
+}
+
+function getConfigPath(): string {
+  const configDir =
+    process.env.TPORT_ROOT ?? path.join(process.env.HOME ?? '', '.tport');
+  return path.join(configDir, 'config.json');
+}
+
+function writeConfig(cfg: Record<string, unknown>): void {
+  const configPath = getConfigPath();
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + '\n');
+}
+
+function readPassword(prompt: string): Promise<string> {
+  return new Promise(resolve => {
+    process.stdout.write(prompt);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+    process.stdin.setEncoding('utf-8');
+
+    let input = '';
+    const onData = (ch: string) => {
+      if (ch === '\r' || ch === '\n') {
+        process.stdin.removeListener('data', onData);
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        process.stdin.pause();
+        process.stdout.write('\n');
+        resolve(input);
+      } else if (ch === '\u007F' || ch === '\b') {
+        if (input.length > 0) input = input.slice(0, -1);
+      } else if (ch === '\u0003') {
+        process.exit(0);
+      } else {
+        input += ch;
+      }
+    };
+    process.stdin.on('data', onData);
+  });
 }
 
 const config = readConfig();
@@ -66,6 +111,7 @@ async function ensureDaemon(port: number): Promise<void> {
     env: {
       ...process.env,
       TPORT_PORT: String(port),
+      TPORT_PASSWORD_HASH: config.passwordHash ?? '',
     },
   });
 
@@ -92,7 +138,10 @@ const DETACH_COMMAND = '/detach';
 async function attachToSession(sessionId: string, port = 3010): Promise<void> {
   const { WebSocket } = await import('ws');
 
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+  const tokenParam = config.passwordHash
+    ? `?token=${encodeURIComponent(config.passwordHash)}`
+    : '';
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws${tokenParam}`);
 
   return new Promise((resolve, reject) => {
     ws.on('open', () => {
@@ -221,6 +270,66 @@ program
   .name('tport')
   .description('Remote dev session dashboard')
   .version(VERSION);
+
+program
+  .command('password')
+  .description('Set or remove the dashboard password')
+  .argument('[password]', 'Password to set (omit for interactive prompt)')
+  .option('--remove', 'Remove the current password')
+  .action(
+    async (passwordArg: string | undefined, opts: { remove?: boolean }) => {
+      if (isDaemonRunning()) {
+        const response = await sendToDaemon({ type: 'list' });
+        const sessions = (response.sessions ?? []) as unknown as SessionInfo[];
+        if (sessions.length > 0) {
+          console.error(
+            `There are ${sessions.length} active session(s). Run "tport stop --all" first so the new password takes effect.`
+          );
+          process.exit(1);
+        }
+      }
+
+      const cfg = readConfig();
+
+      if (opts.remove) {
+        delete cfg.passwordHash;
+        writeConfig(cfg);
+        console.log('Password removed. Dashboard is now open.');
+        if (isDaemonRunning()) {
+          console.log(
+            'Restart the daemon for this to take effect: tport shutdown && tport start'
+          );
+        }
+        return;
+      }
+
+      let password: string;
+      if (passwordArg) {
+        password = passwordArg;
+      } else {
+        password = await readPassword('New password: ');
+        if (!password) {
+          console.error('Password cannot be empty. Use --remove to clear it.');
+          process.exit(1);
+        }
+        const confirm = await readPassword('Confirm password: ');
+        if (password !== confirm) {
+          console.error('Passwords do not match.');
+          process.exit(1);
+        }
+      }
+
+      const hash = createHash('sha256').update(password).digest('hex');
+      (cfg as Record<string, unknown>).passwordHash = hash;
+      writeConfig(cfg as Record<string, unknown>);
+      console.log('Password set.');
+      if (isDaemonRunning()) {
+        console.log(
+          'Restart the daemon for this to take effect: tport shutdown && tport start'
+        );
+      }
+    }
+  );
 
 program
   .command('start')
