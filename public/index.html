@@ -1802,7 +1802,13 @@
 
       if (sessions.length === 0) {
         nameEl.textContent = 'No sessions';
-        dropdown.innerHTML = '<div class="session-option"><div class="session-option-name">No active sessions</div></div>';
+        dropdown.innerHTML = `
+          <div class="session-option"><div class="session-option-name">No active sessions</div></div>
+          <div class="session-option" onclick="window._newSession()" style="border-top: 1px solid var(--border);">
+            <div class="session-option-name" style="color: var(--accent);"><i class="fas fa-plus" style="margin-right: 6px;"></i>New Terminal</div>
+            <div class="session-option-meta">Opens in ~/</div>
+          </div>
+        `;
         return;
       }
 
