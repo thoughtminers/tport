@@ -1411,6 +1411,7 @@
     let ws = null;
     let currentSessionId = null;
     let sessions = [];
+    let homeDir = '';
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     // ── Terminal Setup ──
@@ -1766,10 +1767,22 @@
     }
 
     // ── Sessions ──
+    function shortenPath(p) {
+      if (homeDir && p.startsWith(homeDir)) return '~' + p.slice(homeDir.length);
+      return p;
+    }
+
     async function loadSessions() {
-      const resp = await authFetch('/api/sessions');
-      if (resp.status === 401) { showLogin(); return; }
-      sessions = await resp.json();
+      const [sessResp, cfgResp] = await Promise.all([
+        authFetch('/api/sessions'),
+        authFetch('/api/config'),
+      ]);
+      if (sessResp.status === 401) { showLogin(); return; }
+      sessions = await sessResp.json();
+      if (cfgResp.ok) {
+        const cfg = await cfgResp.json();
+        homeDir = cfg.home ?? '';
+      }
       updateSessionUI();
 
       if (sessions.length > 0 && !currentSessionId) {
@@ -1791,12 +1804,12 @@
       }
 
       const current = sessions.find(s => s.id === currentSessionId) || sessions[0];
-      nameEl.textContent = `${current.name} (${current.command.split('/').pop()})`;
+      nameEl.textContent = `${shortenPath(current.cwd)} (${current.command.split('/').pop()})`;
 
       dropdown.innerHTML = sessions.map(s => `
         <div class="session-option" onclick="window._subscribe('${s.id}')">
-          <div class="session-option-name">${s.name}</div>
-          <div class="session-option-meta">${s.command.split('/').pop()} · ${s.cwd.split('/').pop()}</div>
+          <div class="session-option-name">${shortenPath(s.cwd)} (${s.command.split('/').pop()})</div>
+          <div class="session-option-meta">${s.name}</div>
         </div>
       `).join('') + `
         <div class="session-option" onclick="window._newSession()" style="border-top: 1px solid var(--border);">

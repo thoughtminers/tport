@@ -174,6 +174,12 @@ export function createServer(
     return sessionManager.getInfo(sessionId).cwd;
   }
 
+  // ── Config API ──
+
+  app.get('/api/config', async () => {
+    return { home: process.env.HOME ?? '/tmp' };
+  });
+
   // ── Session API ──
 
   app.get('/api/sessions', async () => {
