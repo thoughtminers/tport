@@ -131,13 +131,6 @@ export async function startDaemon(port = DEFAULT_PORT): Promise<void> {
   process.on('SIGTERM', cleanup);
   process.on('SIGINT', cleanup);
 
-  // Auto-shutdown when last session ends (if no sessions remain)
-  sessionManager.on('session_removed', () => {
-    if (sessionManager.size === 0) {
-      console.log('All sessions ended. Shutting down daemon.');
-      cleanup();
-    }
-  });
 }
 
 function handleDaemonMessage(
