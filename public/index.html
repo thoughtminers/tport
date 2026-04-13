@@ -1782,6 +1782,9 @@
       if (cfgResp.ok) {
         const cfg = await cfgResp.json();
         homeDir = cfg.home ?? '';
+        if (cfg.version) {
+          document.title = `tport v${cfg.version}`;
+        }
       }
       updateSessionUI();
 

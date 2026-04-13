@@ -1,6 +1,6 @@
 {
   "name": "tport",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Remote dev session dashboard. Monitor and interact with your terminal sessions from your phone.",
   "type": "module",
   "main": "dist/cli.js",

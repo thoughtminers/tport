@@ -1,6 +1,7 @@
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import Fastify from 'fastify';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getFileTree, readFileContent } from './core/files.js';
@@ -24,6 +25,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = process.env.TPORT_ROOT
   ? path.join(process.env.TPORT_ROOT, 'lib', 'public')
   : path.join(__dirname, '..', 'public');
+
+const PKG_PATH = process.env.TPORT_ROOT
+  ? path.join(process.env.TPORT_ROOT, 'lib', 'package.json')
+  : path.join(__dirname, '..', 'package.json');
+const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8')) as {
+  version: string;
+};
+const VERSION = pkg.version;
 
 export function createServer(
   sessionManager: SessionManager,
@@ -177,7 +186,7 @@ export function createServer(
   // ── Config API ──
 
   app.get('/api/config', async () => {
-    return { home: process.env.HOME ?? '/tmp' };
+    return { home: process.env.HOME ?? '/tmp', version: VERSION };
   });
 
   // ── Session API ──

@@ -268,7 +268,7 @@ const program = new Command();
 
 program
   .name('tport')
-  .description('Remote dev session dashboard')
+  .description(`Remote dev session dashboard (v${VERSION})`)
   .version(VERSION);
 
 program
