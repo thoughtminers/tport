@@ -1748,6 +1748,14 @@
           case 'session_ended':
             loadSessions();
             break;
+          case 'sessions':
+            sessions = msg.sessions;
+            updateSessionUI();
+            if (currentSessionId && !sessions.find(s => s.id === currentSessionId)) {
+              currentSessionId = null;
+              if (sessions.length > 0) subscribe(sessions[0].id);
+            }
+            break;
         }
       };
 
@@ -1790,7 +1798,12 @@
           <div class="session-option-name">${s.name}</div>
           <div class="session-option-meta">${s.command.split('/').pop()} · ${s.cwd.split('/').pop()}</div>
         </div>
-      `).join('');
+      `).join('') + `
+        <div class="session-option" onclick="window._newSession()" style="border-top: 1px solid var(--border);">
+          <div class="session-option-name" style="color: var(--accent);"><i class="fas fa-plus" style="margin-right: 6px;"></i>New Terminal</div>
+          <div class="session-option-meta">Opens in ~/</div>
+        </div>
+      `;
     }
 
     function subscribe(sessionId) {
@@ -1814,6 +1827,19 @@
     }
 
     window._subscribe = subscribe;
+
+    window._newSession = async function () {
+      document.getElementById('session-dropdown').classList.remove('open');
+      const resp = await authFetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!resp.ok) return;
+      const session = await resp.json();
+      await loadSessions();
+      subscribe(session.id);
+    };
 
     // ── Diffs ──
     let diffCardIdx = 0;

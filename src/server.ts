@@ -60,6 +60,19 @@ export function createServer(
   // WebSocket plugin + route
   app.register(fastifyWebsocket);
 
+  const wsClients = new Set<import('ws').WebSocket>();
+
+  function broadcastSessions() {
+    const sessions = sessionManager.list();
+    const msg = JSON.stringify({ type: 'sessions', sessions });
+    for (const client of wsClients) {
+      if (client.readyState === 1) client.send(msg);
+    }
+  }
+
+  sessionManager.on('session_created', () => broadcastSessions());
+  sessionManager.on('session_removed', () => broadcastSessions());
+
   app.register(async function wsRoutes(fastify) {
     fastify.get('/ws', { websocket: true }, (socket, _req) => {
       // Auth check for WebSocket
@@ -72,6 +85,7 @@ export function createServer(
           return;
         }
       }
+      wsClients.add(socket);
       let subscribedSessionId: string | null = null;
       let unsubscribe: (() => void) | null = null;
 
@@ -145,6 +159,7 @@ export function createServer(
       });
 
       socket.on('close', () => {
+        wsClients.delete(socket);
         if (unsubscribe) {
           unsubscribe();
         }
@@ -164,6 +179,25 @@ export function createServer(
   app.get('/api/sessions', async () => {
     return sessionManager.list();
   });
+
+  app.post<{ Body: { name?: string; cwd?: string; command?: string } }>(
+    '/api/sessions',
+    async (request) => {
+      const home = process.env.HOME ?? '/tmp';
+      const shell = process.env.SHELL ?? '/bin/bash';
+      const cwd = request.body?.cwd ?? home;
+      const command = request.body?.command ?? shell;
+      const id = sessionManager.create({
+        name: request.body?.name,
+        command,
+        args: [],
+        cwd,
+        cols: 80,
+        rows: 24,
+      });
+      return sessionManager.getInfo(id);
+    }
+  );
 
   app.get<{ Params: { id: string } }>(
     '/api/sessions/:id',
