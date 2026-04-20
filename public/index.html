@@ -1327,7 +1327,7 @@
         <i class="fas fa-terminal nav-icon"></i>
         <span class="nav-label">Terminal</span>
       </button>
-      <button class="nav-item" onclick="switchView('diffs-view', this)">
+      <button class="nav-item" id="nav-diffs" onclick="switchView('diffs-view', this)">
         <i class="fas fa-code-compare nav-icon"></i>
         <span class="nav-label">Diffs</span>
       </button>
@@ -1848,6 +1848,9 @@
 
       const current = sessions.find(s => s.id === currentSessionId) || sessions[0];
       nameEl.textContent = `${shortenPath(current.cwd)} (${current.command.split('/').pop()})`;
+
+      const diffsNav = document.getElementById('nav-diffs');
+      diffsNav.style.display = current.hasGit ? '' : 'none';
 
       dropdown.innerHTML = sessions.map(s => `
         <div class="session-option" onclick="window._subscribe('${s.id}')">

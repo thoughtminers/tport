@@ -15,7 +15,7 @@ import {
   getStatus,
   getUnstagedDiff,
   getUntrackedFiles,
-  isGitRepo,
+  hasGitRepo,
   stageFile,
   unstageFile,
 } from './core/git.js';
@@ -194,7 +194,10 @@ export function createServer(
   // ── Session API ──
 
   app.get('/api/sessions', async () => {
-    return sessionManager.list();
+    return sessionManager.list().map((s) => ({
+      ...s,
+      hasGit: hasGitRepo(s.cwd),
+    }));
   });
 
   app.post<{ Body: { name?: string; cwd?: string; command?: string } }>(
@@ -246,7 +249,7 @@ export function createServer(
     async (request, reply) => {
       const cwd = getSessionCwd(request.query.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd))
+      if (!hasGitRepo(cwd))
         return reply.code(400).send({ error: 'Not a git repo' });
       return {
         diff: getDiff(cwd),
@@ -263,7 +266,7 @@ export function createServer(
     async (request, reply) => {
       const cwd = getSessionCwd(request.query.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd))
+      if (!hasGitRepo(cwd))
         return reply.code(400).send({ error: 'Not a git repo' });
       return { files: getStatus(cwd) };
     }
@@ -274,7 +277,7 @@ export function createServer(
     async (request, reply) => {
       const cwd = getSessionCwd(request.query.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd))
+      if (!hasGitRepo(cwd))
         return reply.code(400).send({ error: 'Not a git repo' });
       const n = parseInt(request.query.n ?? '20', 10);
       return { commits: getLog(cwd, n) };
@@ -286,7 +289,7 @@ export function createServer(
     async (request, reply) => {
       const cwd = getSessionCwd(request.body.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd))
+      if (!hasGitRepo(cwd))
         return reply.code(400).send({ error: 'Not a git repo' });
       try {
         stageFile(cwd, request.body.file);
@@ -302,7 +305,7 @@ export function createServer(
     async (request, reply) => {
       const cwd = getSessionCwd(request.body.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd))
+      if (!hasGitRepo(cwd))
         return reply.code(400).send({ error: 'Not a git repo' });
       try {
         unstageFile(cwd, request.body.file);
@@ -318,7 +321,7 @@ export function createServer(
     async (request, reply) => {
       const cwd = getSessionCwd(request.body.session);
       if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
-      if (!isGitRepo(cwd))
+      if (!hasGitRepo(cwd))
         return reply.code(400).send({ error: 'Not a git repo' });
       if (!request.body.message?.trim())
         return reply.code(400).send({ error: 'Message required' });

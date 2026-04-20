@@ -8,7 +8,7 @@ function run(cmd: string, cwd: string): string {
   }
 }
 
-export function isGitRepo(cwd: string): boolean {
+export function hasGitRepo(cwd: string): boolean {
   return run('git rev-parse --is-inside-work-tree', cwd) === 'true';
 }
 
