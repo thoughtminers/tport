@@ -13,6 +13,10 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5/css/xterm.min.css">
   <style>
+    * {
+      touch-action: manipulation;
+    }
+
     :root {
       --bg-primary: #0D1117;
       --bg-secondary: #161B22;
@@ -409,21 +413,32 @@
 
     .mobile-input-bar {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      flex-direction: column;
       background: var(--bg-secondary);
       border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
 
-    .quick-btn {
+    .extra-keys-row {
+      display: flex;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      gap: 6px;
+      padding: 6px 12px;
+      white-space: nowrap;
+    }
+
+    .extra-keys-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .key-btn {
       background: var(--bg-tertiary);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 8px 16px;
+      border-radius: 6px;
+      padding: 6px 10px;
       color: var(--text-primary);
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 600;
       font-family: 'JetBrains Mono', monospace;
       cursor: pointer;
@@ -431,60 +446,45 @@
       transition: all 0.2s ease;
     }
 
-    .quick-btn:active {
+    .key-btn:active {
       background: var(--border);
     }
 
-    .quick-btn.icon {
-      padding: 8px 12px;
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-
-    .quick-btn.toggle-btn {
-      color: var(--accent);
-      border-color: var(--accent-border);
-    }
-
-    .quick-btn.toggle-btn.active {
-      background: var(--accent);
-      color: var(--bg-primary);
-    }
-
-    .quick-btn.yes {
+    .key-btn.yes {
       color: var(--green);
       border-color: var(--green-border);
     }
 
-    .quick-btn.no {
+    .key-btn.no {
       color: var(--red);
       border-color: var(--red-border);
     }
 
-    .input-mode {
+    .input-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex: 1;
-      min-width: 0;
+      padding: 4px 12px 8px;
     }
 
-    .controls-mode {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      white-space: nowrap;
-    }
-
-    .controls-mode.active {
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      color: var(--bg-primary);
+      font-size: 14px;
+      cursor: pointer;
+      flex-shrink: 0;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
     }
 
-    .input-mode.hidden {
-      display: none;
+    .send-btn:active {
+      background: var(--accent-hover);
     }
 
     .mobile-input {
@@ -1176,30 +1176,25 @@
         <div id="mobile-terminal-wrapper">
           <div id="mobile-terminal-output"></div>
           <div class="mobile-input-bar" id="mobile-input-bar">
-            <button class="quick-btn icon toggle-btn" id="controls-toggle" onclick="toggleControls()"><i
-                class="fas fa-keyboard"></i></button>
-            <div class="input-mode" id="input-mode">
-              <button class="quick-btn yes" onclick="sendQuick('y')">y</button>
-              <button class="quick-btn no" onclick="sendQuick('n')">n</button>
-              <textarea class="mobile-input" id="mobile-input" rows="1" placeholder="Type a message..."
-                autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+            <div class="extra-keys-row">
+              <button class="key-btn" onclick="sendRaw('\x1b')">Esc</button>
+              <button class="key-btn yes" onclick="sendQuick('y')">y</button>
+              <button class="key-btn no" onclick="sendQuick('n')">n</button>
+              <button class="key-btn" onclick="sendRaw('\x1b[A')"><i class="fas fa-arrow-up"></i></button>
+              <button class="key-btn" onclick="sendRaw('\x1b[B')"><i class="fas fa-arrow-down"></i></button>
+              <button class="key-btn" onclick="sendQuick('1')">1</button>
+              <button class="key-btn" onclick="sendQuick('2')">2</button>
+              <button class="key-btn" onclick="sendQuick('3')">3</button>
+              <button class="key-btn" onclick="sendQuick('4')">4</button>
+              <button class="key-btn" onclick="sendRaw('\x1b[Z')">⇧Tab</button>
+              <button class="key-btn" onclick="sendRaw('\x03')">Ctrl+C</button>
+              <button class="key-btn" onclick="sendRaw('\x1b[D')"><i class="fas fa-arrow-left"></i></button>
+              <button class="key-btn" onclick="sendRaw('\x1b[C')"><i class="fas fa-arrow-right"></i></button>
             </div>
-            <div class="controls-mode" id="controls-mode">
-              <button class="quick-btn icon" onclick="sendRaw('\x1b[A')"><i class="fas fa-arrow-up"></i></button>
-              <button class="quick-btn icon" onclick="sendRaw('\x1b[B')"><i class="fas fa-arrow-down"></i></button>
-              <button class="quick-btn icon" onclick="sendRaw('\r')"><i
-                  class="fas fa-turn-down fa-rotate-90"></i></button>
-              <button class="quick-btn" onclick="sendRaw('\x1b[Z')"
-                style="font-size:11px;padding:8px 10px;">⇧Tab</button>
-              <button class="quick-btn" onclick="sendRaw('\x1b')" style="font-size:11px;padding:8px 10px;">Esc</button>
-              <button class="quick-btn icon" onclick="sendQuick('0')">0</button>
-              <button class="quick-btn icon" onclick="sendQuick('1')">1</button>
-              <button class="quick-btn icon" onclick="sendQuick('2')">2</button>
-              <button class="quick-btn icon" onclick="sendQuick('3')">3</button>
-              <button class="quick-btn" onclick="sendRaw('\x03')"
-                style="font-size:11px;padding:8px 10px;">Ctrl+C</button>
-              <button class="quick-btn" onclick="sendRaw('\x04')"
-                style="font-size:11px;padding:8px 10px;">Ctrl+D</button>
+            <div class="input-row">
+              <textarea class="mobile-input" id="mobile-input" rows="1" placeholder="Type a message..."
+                autocomplete="off" autocorrect="off" autocapitalize="off" enterkeyhint="send"></textarea>
+              <button class="send-btn" onclick="sendMessage()"><i class="fas fa-check"></i></button>
             </div>
           </div>
         </div>
@@ -1605,18 +1600,7 @@
       if (!text) return;
       input.value = '';
       input.style.height = 'auto';
-      input.blur();
-      // Send each character with small delays, then \r
-      let i = 0;
-      function sendNext() {
-        if (i < text.length) {
-          sendInput(text[i++]);
-          setTimeout(sendNext, 5);
-        } else {
-          setTimeout(() => sendInput('\r'), 50);
-        }
-      }
-      sendNext();
+      sendInput(text + '\r');
     };
 
     window.sendQuick = function (char) {
@@ -1626,15 +1610,6 @@
 
     window.sendRaw = function (data) {
       sendInput(data);
-    };
-
-    window.toggleControls = function () {
-      const toggle = document.getElementById('controls-toggle');
-      const inputMode = document.getElementById('input-mode');
-      const controlsMode = document.getElementById('controls-mode');
-      const active = controlsMode.classList.toggle('active');
-      inputMode.classList.toggle('hidden', active);
-      toggle.classList.toggle('active', active);
     };
 
     // Enter key sends message on mobile
@@ -1755,6 +1730,7 @@
             if (currentSessionId && !sessions.find(s => s.id === currentSessionId)) {
               currentSessionId = null;
               if (sessions.length > 0) subscribe(sessions[0].id);
+              else clearOutput();
             }
             break;
         }
@@ -1793,6 +1769,7 @@
       } else if (currentSessionId && !sessions.find(s => s.id === currentSessionId)) {
         currentSessionId = null;
         if (sessions.length > 0) subscribe(sessions[0].id);
+        else clearOutput();
       }
     }
 
