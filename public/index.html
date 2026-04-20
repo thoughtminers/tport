@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://js.sentry-cdn.com/826873e71aebddd65b6e798b409d378b.min.js" crossorigin="anonymous"></script>
   <title>tport</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -303,6 +304,49 @@
 
     .icon-btn:hover {
       color: var(--accent);
+    }
+
+    /* Settings menu */
+    .settings-menu {
+      display: none;
+      position: absolute;
+      top: 52px;
+      right: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      z-index: 100;
+      box-shadow: 0 8px 24px var(--shadow);
+      min-width: 160px;
+    }
+
+    .settings-menu.open {
+      display: block;
+    }
+
+    .settings-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .settings-item:active {
+      background: var(--bg-tertiary);
+    }
+
+    .settings-item i {
+      color: var(--text-secondary);
+      width: 16px;
+      text-align: center;
     }
 
     /* Session dropdown */
@@ -1157,12 +1201,19 @@
       </div>
       <div class="top-actions">
         <button class="icon-btn" id="notif-btn" onclick="window.toggleNotifications()" aria-label="Notifications">
-          <i class="fas fa-bell-slash" id="notif-icon"></i>
+          <i class="far fa-bell-slash fa-fw" id="notif-icon"></i>
         </button>
-        <button class="icon-btn" onclick="refreshAll()" aria-label="Refresh">
-          <i class="fas fa-sync-alt"></i>
+        <button class="icon-btn" onclick="toggleSettingsMenu()" aria-label="Settings">
+          <i class="fas fa-ellipsis-vertical"></i>
         </button>
       </div>
+    </div>
+
+    <!-- Settings Menu -->
+    <div class="settings-menu" id="settings-menu">
+      <button class="settings-item" onclick="location.reload()">
+        <i class="fas fa-rotate-right"></i> Refresh
+      </button>
     </div>
 
     <!-- Session Dropdown -->
@@ -1684,16 +1735,22 @@
 
     window.toggleNotifications = async function () {
       if (!notificationsEnabled) {
-        if (Notification.permission === 'default') {
-          const perm = await Notification.requestPermission();
-          if (perm !== 'granted') return;
+        if ('Notification' in window) {
+          if (Notification.permission === 'default') {
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') return;
+          }
         }
         notificationsEnabled = true;
-        document.getElementById('notif-icon').className = 'fas fa-bell';
+        const onIcon = document.getElementById('notif-icon');
+        onIcon.classList.remove('far', 'fa-bell-slash');
+        onIcon.classList.add('fas', 'fa-bell');
         document.getElementById('notif-btn').style.color = 'var(--accent)';
       } else {
         notificationsEnabled = false;
-        document.getElementById('notif-icon').className = 'fas fa-bell-slash';
+        const offIcon = document.getElementById('notif-icon');
+        offIcon.classList.remove('fas', 'fa-bell');
+        offIcon.classList.add('far', 'fa-bell-slash');
         document.getElementById('notif-btn').style.color = '';
       }
     };
@@ -2096,18 +2153,21 @@
 
     window.toggleSessionDropdown = function () {
       document.getElementById('session-dropdown').classList.toggle('open');
+      document.getElementById('settings-menu').classList.remove('open');
     };
 
-    window.refreshAll = function () {
-      loadSessions();
-      loadDiffs();
-      loadFiles();
+    window.toggleSettingsMenu = function () {
+      document.getElementById('settings-menu').classList.toggle('open');
+      document.getElementById('session-dropdown').classList.remove('open');
     };
 
-    // Close dropdown on outside click
+    // Close dropdowns on outside click
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.project-selector') && !e.target.closest('.session-dropdown')) {
         document.getElementById('session-dropdown').classList.remove('open');
+      }
+      if (!e.target.closest('#notif-btn') && !e.target.closest('.settings-menu') && !e.target.closest('[aria-label="Settings"]')) {
+        document.getElementById('settings-menu').classList.remove('open');
       }
     });
 
