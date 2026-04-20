@@ -1,5 +1,6 @@
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
+import * as Sentry from '@sentry/node';
 import Fastify from 'fastify';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -39,6 +40,7 @@ export function createServer(
   passwordHash?: string
 ) {
   const app = Fastify({ logger: false });
+  Sentry.setupFastifyErrorHandler(app);
 
   // Static files
   app.register(fastifyStatic, {
@@ -197,7 +199,7 @@ export function createServer(
 
   app.post<{ Body: { name?: string; cwd?: string; command?: string } }>(
     '/api/sessions',
-    async (request) => {
+    async request => {
       const home = process.env.HOME ?? '/tmp';
       const shell = process.env.SHELL ?? '/bin/bash';
       const cwd = request.body?.cwd ?? home;

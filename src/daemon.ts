@@ -1,3 +1,5 @@
+import './instrument.js';
+
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
@@ -130,7 +132,6 @@ export async function startDaemon(port = DEFAULT_PORT): Promise<void> {
 
   process.on('SIGTERM', cleanup);
   process.on('SIGINT', cleanup);
-
 }
 
 function handleDaemonMessage(
