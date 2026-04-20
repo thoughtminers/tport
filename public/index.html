@@ -1722,7 +1722,7 @@
         if (pattern.test(clean)) {
           lastNotifTime = now;
           playBeep();
-          if (document.hidden && Notification.permission === 'granted') {
+          if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
             const match = clean.match(pattern)?.[0] || 'Action needed';
             new Notification('tport', { body: match, tag: 'tport-attention' });
           }
