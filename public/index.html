@@ -568,6 +568,129 @@
       z-index: 10;
     }
 
+    .branch-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .branch-bar .fa-caret-down {
+      font-size: 11px;
+      transition: transform 0.2s ease;
+    }
+
+    .branch-bar.open .fa-caret-down {
+      transform: rotate(180deg);
+    }
+
+    .branch-dropdown {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease;
+    }
+
+    .branch-dropdown.open {
+      max-height: 300px;
+    }
+
+    .branch-dropdown-inner {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .branch-search {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      width: 100%;
+    }
+
+    .branch-search:focus {
+      border-color: var(--accent);
+    }
+
+    .branch-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .branch-item {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .branch-item:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .branch-item.current {
+      color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+    }
+
+    .branch-item.create {
+      color: var(--green-bright);
+      font-style: italic;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 9999;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.success {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .toast.error {
+      background: var(--red);
+      color: #fff;
+    }
+
     .diff-stats {
       display: flex;
       align-items: center;
@@ -1255,6 +1378,11 @@
       <div class="view" id="diffs-view">
         <div class="diffs-view">
           <div class="diff-header">
+            <div class="branch-bar" id="branch-bar" onclick="toggleBranchDropdown()">
+              <i class="fas fa-code-branch"></i>
+              <span id="current-branch">&mdash;</span>
+              <i class="fas fa-caret-down"></i>
+            </div>
             <div class="diff-stats" id="diff-stats">
               <div class="stat-item">
                 <i class="fas fa-file-code stat-files"></i>
@@ -1268,12 +1396,25 @@
               </div>
             </div>
             <div class="diff-actions">
+              <button class="refresh-btn" onclick="window.doPush()">
+                <i class="fas fa-arrow-up"></i> Push
+              </button>
+              <button class="refresh-btn" onclick="window.doPull()">
+                <i class="fas fa-arrow-down"></i> Pull
+              </button>
               <button class="refresh-btn" onclick="document.getElementById('commit-section').classList.toggle('open')">
                 <i class="fas fa-code-commit"></i> Commit
               </button>
               <button class="refresh-btn" onclick="loadDiffs()">
                 <i class="fas fa-sync-alt"></i> Refresh
               </button>
+            </div>
+          </div>
+          <div class="branch-dropdown" id="branch-dropdown">
+            <div class="branch-dropdown-inner">
+              <input class="branch-search" id="branch-search" type="text" placeholder="Filter or create branch..."
+                autocomplete="off" oninput="filterBranches(this.value)">
+              <div class="branch-list" id="branch-list"></div>
             </div>
           </div>
           <div class="commit-section" id="commit-section">
@@ -1938,6 +2079,7 @@
       if (!resp.ok) return;
       const data = await resp.json();
 
+      document.getElementById('current-branch').textContent = data.branch || '—';
       document.getElementById('stat-files').textContent = `${data.stats.files} files`;
       document.getElementById('stat-additions').textContent = `+${data.stats.additions}`;
       document.getElementById('stat-deletions').textContent = `-${data.stats.deletions}`;
@@ -2039,11 +2181,146 @@
           loadDiffs();
         } else {
           const err = await resp.json();
-          alert(err.error || 'Commit failed');
+          showToast(err.error || 'Commit failed', true);
         }
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check"></i> Commit staged';
+      }
+    };
+
+    // ── Toast ──
+    let toastTimer = null;
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast ' + (isError ? 'error' : 'success');
+      requestAnimationFrame(() => toast.classList.add('show'));
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ── Branch Dropdown ──
+    let allBranches = [];
+    let currentBranchName = '';
+
+    function toggleBranchDropdown() {
+      const dropdown = document.getElementById('branch-dropdown');
+      const bar = document.getElementById('branch-bar');
+      const isOpen = dropdown.classList.toggle('open');
+      bar.classList.toggle('open', isOpen);
+      if (isOpen) {
+        loadBranches();
+        const input = document.getElementById('branch-search');
+        input.value = '';
+        setTimeout(() => input.focus(), 100);
+      }
+    }
+
+    async function loadBranches() {
+      if (!currentSessionId) return;
+      const resp = await authFetch(`/api/branches?session=${currentSessionId}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      allBranches = data.branches || [];
+      currentBranchName = data.current || '';
+      renderBranchList(allBranches);
+    }
+
+    function renderBranchList(branches) {
+      const list = document.getElementById('branch-list');
+      const query = document.getElementById('branch-search').value.trim();
+      let html = branches.map(b => {
+        const isCurrent = b === currentBranchName;
+        return `<div class="branch-item${isCurrent ? ' current' : ''}" onclick="switchBranch('${escapeHtml(b)}')">${isCurrent ? '<i class="fas fa-check"></i>' : '<i class="fas fa-code-branch" style="opacity:0.3"></i>'} ${escapeHtml(b)}</div>`;
+      }).join('');
+
+      if (query && !branches.includes(query)) {
+        html += `<div class="branch-item create" onclick="createNewBranch('${escapeHtml(query)}')"><i class="fas fa-plus"></i> Create "${escapeHtml(query)}"</div>`;
+      }
+      list.innerHTML = html || '<div class="branch-item" style="color:var(--text-muted);cursor:default">No branches found</div>';
+    }
+
+    function filterBranches(query) {
+      query = query.toLowerCase();
+      const filtered = allBranches.filter(b => b.toLowerCase().includes(query));
+      renderBranchList(filtered);
+    }
+
+    async function switchBranch(name) {
+      if (!currentSessionId || name === currentBranchName) return;
+      const resp = await authFetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: currentSessionId, branch: name }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        document.getElementById('current-branch').textContent = data.current;
+        currentBranchName = data.current;
+        document.getElementById('branch-dropdown').classList.remove('open');
+        document.getElementById('branch-bar').classList.remove('open');
+        showToast(`Switched to ${data.current}`);
+        loadDiffs();
+      } else {
+        const err = await resp.json();
+        showToast(err.error || 'Checkout failed', true);
+      }
+    }
+    window.switchBranch = switchBranch;
+
+    async function createNewBranch(name) {
+      if (!currentSessionId || !name.trim()) return;
+      const resp = await authFetch('/api/branch/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: currentSessionId, branch: name.trim() }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        document.getElementById('current-branch').textContent = data.current;
+        currentBranchName = data.current;
+        document.getElementById('branch-dropdown').classList.remove('open');
+        document.getElementById('branch-bar').classList.remove('open');
+        document.getElementById('branch-search').value = '';
+        showToast(`Created & switched to ${data.current}`);
+        loadDiffs();
+      } else {
+        const err = await resp.json();
+        showToast(err.error || 'Create branch failed', true);
+      }
+    }
+    window.createNewBranch = createNewBranch;
+
+    // ── Push / Pull ──
+    window.doPush = async function () {
+      if (!currentSessionId) return;
+      const resp = await authFetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: currentSessionId }),
+      });
+      if (resp.ok) {
+        showToast('Pushed successfully');
+      } else {
+        const err = await resp.json();
+        showToast(err.error || 'Push failed', true);
+      }
+    };
+
+    window.doPull = async function () {
+      if (!currentSessionId) return;
+      const resp = await authFetch('/api/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: currentSessionId }),
+      });
+      if (resp.ok) {
+        showToast('Pulled successfully');
+        loadDiffs();
+      } else {
+        const err = await resp.json();
+        showToast(err.error || 'Pull failed', true);
       }
     };
 
@@ -2193,6 +2470,7 @@
       connect();
     }
   </script>
+  <div class="toast" id="toast"></div>
 </body>
 
 </html>

@@ -7,7 +7,10 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getFileTree, readFileContent } from './core/files.js';
 import {
+  checkoutBranch,
   commitStaged,
+  createBranch,
+  getCurrentBranch,
   getDiff,
   getDiffStats,
   getLog,
@@ -15,7 +18,10 @@ import {
   getStatus,
   getUnstagedDiff,
   getUntrackedFiles,
+  gitPull,
+  gitPush,
   hasGitRepo,
+  listBranches,
   stageFile,
   unstageFile,
 } from './core/git.js';
@@ -257,6 +263,7 @@ export function createServer(
         unstaged: getUnstagedDiff(cwd),
         untracked: getUntrackedFiles(cwd),
         stats: getDiffStats(cwd),
+        branch: getCurrentBranch(cwd),
       };
     }
   );
@@ -327,6 +334,88 @@ export function createServer(
         return reply.code(400).send({ error: 'Message required' });
       try {
         const output = commitStaged(cwd, request.body.message);
+        return { ok: true, output };
+      } catch (e) {
+        return reply.code(500).send({ error: String(e) });
+      }
+    }
+  );
+
+  // ── Branch API ──
+
+  app.get<{ Querystring: { session: string } }>(
+    '/api/branches',
+    async (request, reply) => {
+      const cwd = getSessionCwd(request.query.session);
+      if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
+      if (!hasGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
+      return {
+        current: getCurrentBranch(cwd),
+        branches: listBranches(cwd),
+      };
+    }
+  );
+
+  app.post<{ Body: { session: string; branch: string } }>(
+    '/api/checkout',
+    async (request, reply) => {
+      const cwd = getSessionCwd(request.body.session);
+      if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
+      if (!hasGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
+      try {
+        checkoutBranch(cwd, request.body.branch);
+        return { ok: true, current: getCurrentBranch(cwd) };
+      } catch (e) {
+        return reply.code(500).send({ error: String(e) });
+      }
+    }
+  );
+
+  app.post<{ Body: { session: string; branch: string } }>(
+    '/api/branch/create',
+    async (request, reply) => {
+      const cwd = getSessionCwd(request.body.session);
+      if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
+      if (!hasGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
+      if (!request.body.branch?.trim())
+        return reply.code(400).send({ error: 'Branch name required' });
+      try {
+        createBranch(cwd, request.body.branch.trim());
+        return { ok: true, current: getCurrentBranch(cwd) };
+      } catch (e) {
+        return reply.code(500).send({ error: String(e) });
+      }
+    }
+  );
+
+  app.post<{ Body: { session: string } }>(
+    '/api/push',
+    async (request, reply) => {
+      const cwd = getSessionCwd(request.body.session);
+      if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
+      if (!hasGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
+      try {
+        const output = gitPush(cwd);
+        return { ok: true, output };
+      } catch (e) {
+        return reply.code(500).send({ error: String(e) });
+      }
+    }
+  );
+
+  app.post<{ Body: { session: string } }>(
+    '/api/pull',
+    async (request, reply) => {
+      const cwd = getSessionCwd(request.body.session);
+      if (!cwd) return reply.code(400).send({ error: 'Invalid session' });
+      if (!hasGitRepo(cwd))
+        return reply.code(400).send({ error: 'Not a git repo' });
+      try {
+        const output = gitPull(cwd);
         return { ok: true, output };
       } catch (e) {
         return reply.code(500).send({ error: String(e) });

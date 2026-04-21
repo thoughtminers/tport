@@ -8,6 +8,10 @@ function run(cmd: string, cwd: string): string {
   }
 }
 
+export function getCurrentBranch(cwd: string): string {
+  return run('git rev-parse --abbrev-ref HEAD', cwd);
+}
+
 export function hasGitRepo(cwd: string): boolean {
   return run('git rev-parse --is-inside-work-tree', cwd) === 'true';
 }
@@ -69,6 +73,44 @@ export function commitStaged(cwd: string, message: string): string {
     cwd,
     encoding: 'utf-8',
     timeout: 30000,
+  }).trimEnd();
+}
+
+export function listBranches(cwd: string): string[] {
+  const raw = run('git branch --format=%(refname:short)', cwd);
+  if (!raw) return [];
+  return raw.split('\n').filter(Boolean);
+}
+
+export function checkoutBranch(cwd: string, branch: string): void {
+  execFileSync('git', ['checkout', branch], {
+    cwd,
+    encoding: 'utf-8',
+    timeout: 30000,
+  });
+}
+
+export function createBranch(cwd: string, branch: string): void {
+  execFileSync('git', ['checkout', '-b', branch], {
+    cwd,
+    encoding: 'utf-8',
+    timeout: 30000,
+  });
+}
+
+export function gitPush(cwd: string): string {
+  return execFileSync('git', ['push'], {
+    cwd,
+    encoding: 'utf-8',
+    timeout: 60000,
+  }).trimEnd();
+}
+
+export function gitPull(cwd: string): string {
+  return execFileSync('git', ['pull'], {
+    cwd,
+    encoding: 'utf-8',
+    timeout: 60000,
   }).trimEnd();
 }
 
