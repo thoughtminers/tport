@@ -1360,6 +1360,7 @@
               <button class="key-btn" onclick="sendQuick('2')">2</button>
               <button class="key-btn" onclick="sendQuick('3')">3</button>
               <button class="key-btn" onclick="sendQuick('4')">4</button>
+              <button class="key-btn" onclick="sendRaw('\r')">Enter</button>
               <button class="key-btn" onclick="sendRaw('\x1b[Z')">⇧Tab</button>
               <button class="key-btn" onclick="sendRaw('\x03')">Ctrl+C</button>
               <button class="key-btn" onclick="sendRaw('\x1b[D')"><i class="fas fa-arrow-left"></i></button>
@@ -1792,7 +1793,8 @@
       if (!text) return;
       input.value = '';
       input.style.height = 'auto';
-      sendInput(text + '\r');
+      sendInput(text);
+      setTimeout(() => sendInput('\r'), 50);
     };
 
     window.sendQuick = function (char) {
@@ -1905,6 +1907,10 @@
 
       ws.onopen = () => {
         document.getElementById('status-dot').classList.remove('disconnected');
+        // Re-subscribe to restore output after reconnect
+        if (currentSessionId) {
+          ws.send(JSON.stringify({ type: 'subscribe', sessionId: currentSessionId }));
+        }
         loadSessions();
       };
 
@@ -2024,6 +2030,19 @@
       if (!isMobile && window._fitTerminal) window._fitTerminal();
       updateSessionUI();
       document.getElementById('session-dropdown').classList.remove('open');
+
+      // Close branch dropdown and reset
+      document.getElementById('branch-dropdown').classList.remove('open');
+      document.getElementById('branch-bar').classList.remove('open');
+      document.getElementById('branch-list').innerHTML = '';
+      document.getElementById('branch-search').value = '';
+      allBranches = [];
+      currentBranchName = '';
+
+      // Refresh active view
+      const activeView = document.querySelector('.view.active');
+      if (activeView?.id === 'diffs-view') loadDiffs();
+      else if (activeView?.id === 'files-view') loadFiles();
     }
 
     window._subscribe = subscribe;
@@ -2268,6 +2287,9 @@
       }
     }
     window.switchBranch = switchBranch;
+    window.toggleBranchDropdown = toggleBranchDropdown;
+    window.filterBranches = filterBranches;
+    window.showToast = showToast;
 
     async function createNewBranch(name) {
       if (!currentSessionId || !name.trim()) return;

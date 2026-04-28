@@ -77,9 +77,17 @@ export function commitStaged(cwd: string, message: string): string {
 }
 
 export function listBranches(cwd: string): string[] {
-  const raw = run('git branch --format=%(refname:short)', cwd);
-  if (!raw) return [];
-  return raw.split('\n').filter(Boolean);
+  try {
+    const raw = execFileSync('git', ['branch', '--format=%(refname:short)'], {
+      cwd,
+      encoding: 'utf-8',
+      timeout: 10000,
+    }).trimEnd();
+    if (!raw) return [];
+    return raw.split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 export function checkoutBranch(cwd: string, branch: string): void {
